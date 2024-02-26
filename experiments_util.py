@@ -4,7 +4,7 @@ from other_jd_algorithms import *
 from rnojd import *
 
 
-def random_error(AA, eps = 1e-5, norm_type = 2,pd = True):
+def random_error(AA, eps = 1e-5, norm_type = 'fro',pd = True):
     n = AA.shape[0]
     p = AA.shape[1]
     result = None
@@ -24,10 +24,11 @@ def random_error(AA, eps = 1e-5, norm_type = 2,pd = True):
                 nonpd = True
         if not pd:
             break
+    print("generation succeed")
     return np.array(result)
 
 def random_jd_matrices(d = 5, n = 4, orthogonal = False):
-    diagonals = 2*1e-2  +  np.abs(np.random.normal(size=(d, n)))
+    diagonals = 3*1e-2  +  np.abs(np.random.normal(size=(d, n)))
     V = np.random.randn(n, n)
     V =  V / np.linalg.norm(V,axis=0)
     if orthogonal:
@@ -56,9 +57,9 @@ def random_jd_ill_conditioned_matrices(d = 5, n = 4, orthogoal = False, max_powe
 
 def print_time_error(name, times,errors, bold = False):
     if not bold:
-        output_str = name + " & " + "$\\num{%.3g}$" + " & " + "$\\num{%.2g}$"  + " & " \
-                    + "$\\num{%.3g}$" + " & " + "$\\num{%.2g}$" + " & " \
-                    + "$\\num{%.3g}$" + " & " + "$\\num{%.2e}$" + "\\\\\n" 
+        output_str = name + " & " + "%.2f" + " & " + "$\\num{%.3g}$"  + " & " \
+                    + "%.2f" + " & " + "$\\num{%.3g}$" + " & " \
+                    + "%.2f" + " & " + "$\\num{%.3g}$" + "\\\\\n" 
     else:
         output_str = "{\\bf " + name + "}" + " & " + "$\\num{%.2e}$" + " & " + "$\\num{%.2e}$"  + " & " \
                     + "$\\num{%.2e}$" + " & " + "$\\num{%.2e}$" + " & " \
@@ -67,7 +68,7 @@ def print_time_error(name, times,errors, bold = False):
 
 def print_time_error_ill_conditioned(name, times,errors, bold = False):
     if not bold:
-        output_str = name + " & " + "$\\num{%.3g}$" + " & " + "$\\num{%.2g}$"  + "\\\\\n" 
+        output_str = name + " & " + "$\\num{%.2f}$" + " & " + "$\\num{%.3g}$"  + "\\\\\n" 
     print(output_str % (times, errors))
 
 def offdiagonal_frobenius_square(A, by_column = False):
@@ -108,9 +109,9 @@ def experiment_helper(input_arrays, repeats, with_error, error_levels, \
                       trials, d,n, norm_type, pd= True):
     eps = np.finfo(float).eps
     n_l = len(error_levels)
-    times_qndiag, times_rand, times_rand_de, times_pham, times_jade, times_ffdiag,times_manopt \
+    times_qndiag, times_rand, times_rand_de, times_pham, times_jade, times_ffdiag,times_uwedge \
         = np.zeros(n_l), np.zeros(n_l), np.zeros(n_l), np.zeros(n_l), np.zeros(n_l), np.zeros(n_l), np.zeros(n_l)
-    errors_qndiag, errors_rand, errors_rand_de, errors_pham, errors_jade, errors_ffdiag, errors_manopt \
+    errors_qndiag, errors_rand, errors_rand_de, errors_pham, errors_jade, errors_ffdiag, errors_uwedge \
         = np.zeros(n_l), np.zeros(n_l), np.zeros(n_l), np.zeros(n_l), np.zeros(n_l), np.zeros(n_l), np.zeros(n_l)
     times_rffdiag, errors_rffdiag = np.zeros(n_l), np.zeros(n_l)
     for i, error_level in enumerate(error_levels):
@@ -123,23 +124,18 @@ def experiment_helper(input_arrays, repeats, with_error, error_levels, \
             times_rand[i] += end - start
             errors_rand[i] += np.sqrt(offdiagonal_frobenius_square(Q_rjd.T @ test_array @  Q_rjd))
 
-        for _ in range(repeats):
-            start = time()
-            Q_djrd = manopt_rnojd(test_array, trials=trials, pd = pd, max_iter=10)
-            end = time()
-            times_rand_de[i] += end - start
-            errors_rand_de[i] += np.sqrt(offdiagonal_frobenius_square(Q_djrd.T @ test_array @ Q_djrd))
         #for _ in range(repeats):
         #    start = time()
-        #    Q_djrd = manopt_rnojd(test_array, trials=trials,max_iter=200, trivial_init=True)
+        #    B,_,_,_ = uwedge(test_array,)
+        #    B = (B.T / np.linalg.norm(B.T,axis=0)).T
         #    end = time()
-        #    times_manopt[i] += end - start
-        #    errors_manopt[i] += np.sqrt(offdiagonal_frobenius_square(Q_djrd.T @ test_array @ Q_djrd))
+        #    times_uwedge[i] += end - start
+        #    errors_uwedge[i] += np.sqrt(offdiagonal_frobenius_square(B @ test_array @ B.T))
         for _ in range(repeats):
             start = time()
             n = input_arrays.shape[2]
             B0 = np.eye(n)
-            B, _ = qndiag(test_array, B0 = B0, ortho=False, tol = 1e-9, check_sympos = True)  # use the algorithm
+            B, _ = qndiag(test_array, B0 = B0, ortho=False,  check_sympos = True)  # use the algorithm
             B = (B.T / np.linalg.norm(B.T,axis=0)).T
             end = time()
             times_qndiag[i] += end - start
@@ -147,7 +143,7 @@ def experiment_helper(input_arrays, repeats, with_error, error_levels, \
 
         for _ in range(repeats):
             start = time()
-            V,_ = ajd_pham(test_array,eps=1e-10)
+            V,_ = ajd_pham(test_array)
             V = (V.T / np.linalg.norm(V.T,axis=0)).T
             end = time()
             times_pham[i] += end - start
@@ -172,7 +168,7 @@ def experiment_helper(input_arrays, repeats, with_error, error_levels, \
 
     title_str = "\\begin{table}[!hbt!]\n" + "\\begin{center}\n" + \
                 "\\caption{Runtime and accuracy comparison for " + \
-                "$d={d}, n={n}$".format(d = d, n=n) +"}\n" +"\\begin{tabular}{||c|c|c|c|c|c|c||}\n" \
+                "$d={d}, n={n}$".format(d = d, n=n) +"}\n" +"\\begin{tabular}{||c|S[table-format=2.2]|c|S[table-format=2.2]|c|S[table-format=2.2]|c||}\n" \
                 + "\\hline\n"
     title_str += "Name & Time $\\epsilon_1$ & Error $\epsilon_1$ & Time $\\epsilon_2$ & Error $\\epsilon_2$ &Time $\\epsilon_3$ &Error $\\epsilon_3$\\\\\n"\
          + "\\hline"
@@ -181,9 +177,9 @@ def experiment_helper(input_arrays, repeats, with_error, error_levels, \
     print_time_error("PHAM", 1000*times_pham / repeats, errors_pham / repeats)
     print_time_error("QNDIAG", 1000*times_qndiag / repeats, errors_qndiag / repeats)
     print_time_error("RSDC", 1000*times_rand / repeats, errors_rand / repeats)
-    print_time_error("RRSDC", 1000*times_rand_de / repeats, errors_rand_de / repeats)
+    #print_time_error("RRSDC", 1000*times_rand_de / repeats, errors_rand_de / repeats)
     print_time_error("RFFDIAG", 1000*times_rffdiag / repeats, errors_rffdiag / repeats)
-    print_time_error("RiemanSDC", 1000*times_manopt / repeats, errors_manopt / repeats)
+    #print_time_error("UWEDGE", 1000*times_uwedge / repeats, errors_uwedge / repeats)
     print("\\hline")
     if not with_error:
         error_level = 0
@@ -198,10 +194,10 @@ def experiment_helper_ill_conditioned(input_arrays, repeats, with_error, error_l
                       trials, d,n, norm_type):
     test_array = input_arrays
     eps = np.finfo(float).eps
-    times_qndiag, times_rand, times_rand_de, times_pham, times_jade, times_ffdiag,times_manopt \
-        = 0, 0, 0, 0, 0, 0, 0
-    errors_qndiag, errors_rand, errors_rand_de, errors_pham, errors_jade, errors_ffdiag, errors_manopt \
-        = 0, 0, 0, 0, 0, 0, 0
+    times_qndiag, times_rand, times_uwedge, times_pham, times_ffdiag \
+        = 0, 0, 0, 0, 0,
+    errors_qndiag, errors_rand, errors_uwedge, errors_pham, errors_ffdiag \
+        = 0, 0, 0, 0, 0,
     times_rffdiag, errors_rffdiag = 0, 0
 
     for _ in range(repeats):
@@ -213,37 +209,25 @@ def experiment_helper_ill_conditioned(input_arrays, repeats, with_error, error_l
 
     for _ in range(repeats):
         start = time()
-        Q_djrd = manopt_rnojd(test_array, trials=trials,max_iter=10)
-        end = time()
-        times_rand_de += end - start
-        errors_rand_de += np.sqrt(offdiagonal_frobenius_square(Q_djrd.T @ test_array @ Q_djrd))
-    
-    '''for _ in range(repeats):
-        start = time()
-        Q_djrd = manopt_rnojd(test_array, trials=trials,max_iter=200, trivial_init=True)
-        end = time()
-        times_manopt += end - start
-        errors_manopt += np.sqrt(offdiagonal_frobenius_square(Q_djrd.T @ test_array @ Q_djrd))'''
-
-    for _ in range(repeats):
-        start = time()
         n = input_arrays.shape[2]
         B0 = np.eye(n)
-        B, _ = qndiag(test_array, B0 = B0, ortho=False, tol = 1e-9, check_sympos = True)  # use the algorithm
+        B, _ = qndiag(test_array, B0 = B0, ortho=False, check_sympos = True)  # use the algorithm
         B = (B.T / np.linalg.norm(B.T,axis=0)).T
         end = time()
         times_qndiag += end - start
         errors_qndiag += np.sqrt(offdiagonal_frobenius_square(B @ test_array @ B.T))
 
+    for _ in range(repeats):
         start = time()
-        V,_ = ajd_pham(test_array,eps=1e-10)
+        V,_ = ajd_pham(test_array,)
         V = (V.T / np.linalg.norm(V.T,axis=0)).T
         end = time()
         times_pham += end - start
         errors_pham += np.sqrt(offdiagonal_frobenius_square(V @ test_array @ V.T))
 
+    for _ in range(repeats):
         start = time()
-        Q_ffdiag, iter = ffdiag(test_array,eps = 1e-8)
+        Q_ffdiag, iter = ffdiag(test_array,)
         Q_ffdiag = (Q_ffdiag.T / np.linalg.norm(Q_ffdiag.T,axis=0)).T
         end = time()
         times_ffdiag += end - start
@@ -255,6 +239,13 @@ def experiment_helper_ill_conditioned(input_arrays, repeats, with_error, error_l
             times_rffdiag += end - start
             errors_rffdiag += np.sqrt(offdiagonal_frobenius_square(Q_rffdiag.T @ test_array @ Q_rffdiag))
 
+    #for _ in range(repeats):
+    #        start = time()
+    #        B,_,_,_ = uwedge(test_array)
+    #        B = (B.T / np.linalg.norm(B.T,axis=0)).T
+    #        end = time()
+    #        times_uwedge += end - start
+    #        errors_uwedge += np.sqrt(offdiagonal_frobenius_square(B @ test_array @ B.T))
     title_str = "\\begin{table}[!hbt!]\n" + "\\begin{center}\n" + \
                 "\\caption{Runtime and accuracy comparison for ill-conditioned matrices}\n" +"\\begin{tabular}{||c|c|c||}\n" \
                 + "\\hline\n"
@@ -265,8 +256,8 @@ def experiment_helper_ill_conditioned(input_arrays, repeats, with_error, error_l
     print_time_error_ill_conditioned("PHAM", 1000*times_pham / repeats, errors_pham / repeats)
     print_time_error_ill_conditioned("QNDIAG", 1000*times_qndiag / repeats, errors_qndiag / repeats)
     print_time_error_ill_conditioned("RSDC", 1000*times_rand / repeats, errors_rand / repeats)
-    print_time_error_ill_conditioned("RRSDC", 1000*times_rand_de / repeats, errors_rand_de / repeats)
     print_time_error_ill_conditioned("RFFDIAG", 1000*times_rffdiag / repeats, errors_rffdiag / repeats)
+    #print_time_error_ill_conditioned("UWEDGE", 1000*times_uwedge / repeats, errors_uwedge / repeats)
     #print_time_error_ill_conditioned("ManNOJD", 1000*times_manopt / repeats, errors_manopt / repeats)
     print("\\hline")
     if not with_error:

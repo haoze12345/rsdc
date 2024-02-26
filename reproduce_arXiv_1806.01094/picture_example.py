@@ -194,7 +194,7 @@ images_per_method = [images_g0] +  \
      for V in [np.eye(*unmixings[0].shape)] + unmixings]
 cols = ['Image {}'.format(col) for col in range(1, num_images+1)]
 rows = ['ground truth', 'observation', 'rsdc', 'rffdiag', 'uwedge',]
-fig = plt.figure(dpi=600, figsize=(productionplot.TEXTWIDTH, 5))
+fig = plt.figure(dpi=200, figsize=(productionplot.TEXTWIDTH, 5))
 
 for mind, method in enumerate(rows):
     subplotind = 1
@@ -214,7 +214,7 @@ for mind, method in enumerate(rows):
 fig.savefig('picture_example.pdf', bbox_inches='tight')
 
 #Running time report
-repeats = 100
+repeats = 0
 times_rnojd, times_rnojd_manopt, times_uwedge, times_ffdiag = 0, 0, 0, 0
 for _ in range (repeats):
     _, time_rnojd = rnojd_ica.fit(Xmat.T, algorithm= rnojd_wrapper)

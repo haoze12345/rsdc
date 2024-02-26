@@ -6,6 +6,7 @@ from numpy.linalg import norm, inv
 from scipy.linalg import expm
 import numpy as np
 from pyriemann.utils.ajd import ajd_pham, rjd
+from coroica.uwedge import uwedge
 
 def ffdiag_update(R_tau,ortho):
     '''
@@ -66,7 +67,6 @@ def ffdiag(X, eps = 1.0e-08, max_iter = 100, V0 = None):
         maximum number of iterations/updates
     '''
     dim = X.shape[1]
-    n_lags = X.shape[0]
     W = zeros((dim,dim))
     if (V0 is None):
         V = eye(dim)
@@ -79,7 +79,6 @@ def ffdiag(X, eps = 1.0e-08, max_iter = 100, V0 = None):
 
     while iter_eps > eps and n_iter < max_iter:
         n_iter += 1
-        Vn1 = V
         Q = eye(dim) + W
         C = Q @ C @ Q.T
         #for tau in range(0,n_lags):
@@ -88,8 +87,10 @@ def ffdiag(X, eps = 1.0e-08, max_iter = 100, V0 = None):
         if norm(W) > theta:
             W = (W*theta)/norm(W)
         # update V
-        V = dot(eye(dim) + W,V)
-        delta = np.linalg.norm(V - Vn1,'fro')**2
+        update = W@V
+        V = V + update
+        #V = dot(eye(dim) + W,V)
+        delta = np.linalg.norm(update,'fro')**2
         #for i in range(0,dim):
         #    for j in range(0,dim):
         #        if i != j:

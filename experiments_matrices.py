@@ -1,9 +1,10 @@
 from experiments_util import *
 
-def overall_experiments(repeats = 100, trials = 3, MA= False, norm_type = 2, pd = True):
-    settings = [(10,10),(100,10),(10,100),]
+def overall_experiments(repeats = 1, trials = 3, MA= False, norm_type = 2, pd = True):
+    settings = [(10,100),]
+    #settings = [(10,10),(100,10),(10,100),]
     error_levels = [0, 1e-6, 1e-3]
-
+    
     for n,p in settings:
         if pd:
             C = random_jd_matrices(n,p)
